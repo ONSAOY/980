@@ -197,6 +197,17 @@ fun main(){
 
     val player = Player("Onsaoy", 100, 15)
 
+    val apple = Item(
+        "apple",
+        "Яблучко",
+        "Восстанавливает 10 Hp",
+        0,
+        { player ->
+            player.health += 10
+            println("${player.name} восстанавливает 10 Hp")
+        }
+    )
+
     val healthPotion = Item(
         "health_potions",
         "Зелье здоровья",
@@ -233,6 +244,9 @@ fun main(){
     player.pickUpItem(strenghtPotion)
     player.pickUpItem(oldKey)
     player.pickUpItem(healthPotion)
+    player.pickUpItem(apple)
+    player.pickUpItem(apple)
+    player.pickUpItem(apple)
 
     player.showInventory()
 
@@ -247,7 +261,9 @@ fun main(){
         println("Мне нужен ключ от этой двери")
     }
 
-
+    if (player.inventory.hasItem("apple")){
+        println("Вы можете сьесть яблучко, у вас есть: ${player.inventory.countItems("apple")} штук")
+    }
 
     if (player.inventory.hasItem("health_potions")){
         println("Вы можете излечится, у вас есть зелье здоровья: ${player.inventory.countItems("health_potions")} штук")
