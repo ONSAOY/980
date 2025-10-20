@@ -162,6 +162,83 @@ class QuestManager{
     fun getQuest(questId: String): Quest?{
         return quests[questId]
     }
+
+    fun startQuest(questId: String): Boolean{
+        val quest = quests[questId]
+        if (quest != null && !quest.isCompleted){
+            quest.isActive = true
+            println("Квест активирован: ${quest.name}")
+            return true
+        }
+        return false
+    }
+
+    // Функция проверки выполнения всех активных квестов
+    fun checkAllQuests(player: Player){
+        // .values - получает все значения словаря (все квесты)
+        // .filter { } - фильтрует только активные квесты
+        quests.values.filter { it.isActive }.forEach { quest ->
+            quest.checkCompletion(player)
+        }
+    }
+
+    fun displayQuests(){
+        if (quests.isEmpty()){
+            println("Список квестов пуст")
+        }else {
+            println("\n === Журнал квестов === ")
+            // Перебор всех значений словаря квестой
+            quests.values.forEach { quest ->
+                quest.displayInfo()
+            }
+        }
+    }
+
+    fun getActiveQuests(): List<Quest>{
+        // .toList() - преобразует в изменяемый список
+        return quests.values.filter { it.isActive }.toList()
+    }
+}
+
+class NPC(val name: String, val description: String){
+    // mutableMapOf<String, String> - словарь диалогов
+    // Ключ - фраза игрока, Значение - ответ NPC
+    private val dialogues = mutableMapOf<String, String>()
+
+    fun addDialogue(playerPhrase: String, npcResponse: String){
+        dialogues[playerPhrase] = npcResponse
+    }
+
+    fun talk(){
+        println("\n === Диалог с $name === ")
+        println("$name: $description")
+
+        if (dialogues.isEmpty()){
+            println("$name не хочет говорить")
+            return
+        }
+
+        // Показываем варианты ответов игрока
+        println("\n Варианты ответов: ")
+        dialogues.keys.forEachIndexed { index, phrase ->
+            println("${index + 1}. $phrase")
+        }
+        println("${dialogues.size + 1}. Уйти")
+        // Обрабатываем ввод игрока
+        println("Выберете реплику: ")
+        val choise = readln().toIntOrNull() ?: 0
+
+        if (choise in 1..dialogues.size){
+            // Преобразуем ключи в список и берем по индексу
+            val playerPhrase = dialogues.keys.toList()[choise - 1]
+            val npcResponse = dialogues[playerPhrase] // получаем ответ NPC по ключу (фразе игрока)
+
+            println("\nВы: $playerPhrase")
+            println("$name: $npcResponse")
+        }else{
+            println("Вы прощаетесь с $name")
+        }
+    }
 }
 
 class Player(
@@ -170,6 +247,8 @@ class Player(
     attack: Int
 ) : Character(name, health, attack){
     val inventory = Inventory()
+
+    val questManager = QuestManager()
 
     fun usePotion() {
         //используем поиск по id зелья здоровья
@@ -190,84 +269,157 @@ class Player(
     }
 }
 
+class Shop(val name: String, val description: String){
+    private val itemsForSale = mutableMapOf<Item, Int>()
 
+    private val buyPrices = mutableMapOf<String, Int>()
+
+    fun addItem(item: Item, price: Int){
+        itemsForSale[item] = price
+        buyPrices[item.id] = (price * 0.6).toInt()
+    }
+    fun openShop(player: Player){
+        println("\n === Бобро пожаловать в магазин: $name === ")
+        println(description)
+
+        var shopping = true
+
+        while (shopping){
+            println("\n Меню магазина ")
+            println("1. Купить предметы")
+            println("2. Продать предметы")
+            println("3. Уйти")
+
+            println("Выберете действие: ")
+            when(readln().toIntOrNull() ?: 0){
+                1 -> showItemForSale(player)
+                2 -> showBuyMenu(player)
+                3 -> {
+                    shopping = false
+                    println(" бб ")
+                }
+                else -> println("попробуй ещё раз") 
+            }
+        }
+    }
+
+    private fun showItemForSale(player: Player){
+        if (itemsForSale.isEmpty()){
+            println("Товаров нет")
+            return
+        }
+        println("Товары на продажу: ")
+        itemsForSale.forEach { (item, price) ->
+            println("${item.name} - ${item.description} | Цена: $price fucking american dollars")
+        }
+        println("${itemsForSale.size + 1}. Назад")
+
+        println("Выберете товар для покупки: ")
+        val choise = readln().toIntOrNull() ?: 0
+
+        if (choise in 1..itemsForSale.size){
+            val selectedItem = itemsForSale.keys.toList()[choise - 1]
+            val price = itemsForSale[selectedItem] ?: 0
+
+            //ДЗ РЕАЛИЗОВАТЬ ПРОВЕРКУ ЗОЛОТА У ИГРОКА (ХВАТАЕТ ИЛИ НЕ)
+            println(" Вы покупаете ${selectedItem.name} за $price золотых")
+            player.inventory.addItem(selectedItem)
+            // ДЗ ВЫЧЕСТЬ ЗОЛОТЫЕ
+        }
+    }
+}
 
 fun main(){
-    println(" === Система инвенторя === ")
 
-    val player = Player("Onsaoy", 100, 15)
+    println("Система квестов и npc")
 
-    val apple = Item(
-        "apple",
-        "Яблучко",
-        "Восстанавливает 10 Hp",
-        0,
-        { player ->
-            player.health += 10
-            println("${player.name} восстанавливает 10 Hp")
-        }
+    val player = Player("gigaNiga", 100, 15)
+
+    // предметы для квестов создание
+    val misteryHerb = Item(
+        "mistery_herb",
+        "Таинственная трава",
+        "Редкое растение с целебными свойствами",
+        15
     )
 
-    val healthPotion = Item(
-        "health_potions",
-        "Зелье здоровья",
-        "Восстанавливает 30 Hp",
-        25,
-        { player ->
-            player.health += 30
-            println("${player.name} восстанавливает 30 Hp")
-        }
+    val ancientAmulet = Item(
+        "ancient_amulet",
+        "Старинный амулет",
+        "Древний амулет с магическими свойствами",
+        100
     )
 
-    val strenghtPotion = Item(
-        "strenght_potion",
-        "Зелье силы",
-        "Увиличивает урон на 10 (на 3 хода)",
-        40,
-        { player ->
-            println("${player.name} вы чуствуете [РЕШИМОСТЬ], атака была увеличена")
-        }
+    //Создание квестов
+
+    val herbQuest = Quest(
+        "find_herbs",
+        "Сбор целебных трав",
+        "Найдите таинственную траву в лесу",
+        "mistery_herb",
+        50,
+        ancientAmulet
     )
 
-    val oldKey = Item(
-        "old_key",
-        "Старый ключ",
-        "Может открыть что-то",
-        5
-    ) // useEffect не указан - он по умолчанию остается {}
+    val monsterQuest = Quest(
+        "kill_monsters",
+        "Очистка леса",
+        "Убейте 3 врагов",
+        rewardGold = 100
+    )
 
-    println("\n === Игра началась === ")
+    val villageElder = NPC("Cтарейшина деревни", "Мутный старик")
 
-    println("Игрок порылся в карманах, и нашел предметы")
+    villageElder.addDialogue("Поздороваться", "Бобро пожаловать путник")
+    villageElder.addDialogue("Cпросить о работе", "Лес кишит тварями, поможешь мне?")
+    villageElder.addDialogue("Cпросить о траве", "В глубине леса растет трава, собери для меня немного")
 
-    player.pickUpItem(healthPotion)
-    player.pickUpItem(strenghtPotion)
-    player.pickUpItem(oldKey)
-    player.pickUpItem(healthPotion)
-    player.pickUpItem(apple)
-    player.pickUpItem(apple)
-    player.pickUpItem(apple)
+    player.questManager.addQuest(herbQuest)
+    player.questManager.addQuest(monsterQuest)
 
-    player.showInventory()
+    player.questManager.startQuest("find_herbs")
 
-    println("----- Использование предметов -----")
-    player.inventory.useItem(0, player)
+    // Игра с демонстрацией работы
+    println(" === Взаимодейстие с npc === ")
+    villageElder.talk()
 
-    println(" --- Поиск предметов --- ")
-    val foundKey = player.inventory.findItemById("old_key")
-    if (foundKey != null){
-        println("Вы открываете дверь. Но он рассыпался у вас в руках")
-    } else{
-        println("Мне нужен ключ от этой двери")
-    }
+    println("\n === Проверка квестов === ")
+    player.questManager.displayQuests()
 
-    if (player.inventory.hasItem("apple")){
-        println("Вы можете сьесть яблучко, у вас есть: ${player.inventory.countItems("apple")} штук")
-    }
+    println("\n === Игрок нашел траву === ")
+    player.inventory.addItem(misteryHerb)
 
-    if (player.inventory.hasItem("health_potions")){
-        println("Вы можете излечится, у вас есть зелье здоровья: ${player.inventory.countItems("health_potions")} штук")
-    }
+    println("\n === Проверка на выполнение квеста === ")
+    player.questManager.checkAllQuests(player)
+
+    println("\n === Финальный статус квестов === ")
+    player.questManager.displayQuests()
+
+
+
+//    val apple = Item(
+//        "apple",
+//        "Яблучко",
+//        "Восстанавливает 10 Hp",
+//        0,
+//        { player ->
+//            player.health += 10
+//            println("${player.name} восстанавливает 10 Hp")
+//        }
+//    )
+
+//    player.pickUpItem(apple)
+//    player.pickUpItem(apple)
+//    player.pickUpItem(apple)
+
+//    player.showInventory()
+
+
+
+//    if (player.inventory.hasItem("apple")){
+//        println("Вы можете сьесть яблучко, у вас есть: ${player.inventory.countItems("apple")} штук")
+//    }
+
 }
 
 
