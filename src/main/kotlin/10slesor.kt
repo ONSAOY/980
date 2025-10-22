@@ -20,7 +20,7 @@ class Item(
 class Inventory{
     //mutableListOf - создает пустой изменяемый список в который можно положить только предметы
     //private - доступ к списку предметов есть только внутри класса инвенторя
-    private val items = mutableListOf<Item>()
+    val items = mutableListOf<Item>()
 
     fun addItem(item: Item){
         // .add(item) - метод добавления предмета в конец списка
@@ -88,7 +88,7 @@ open class Character(val name: String, var health: Int, val attack: Int){
         if (health <= 0) println("$name пал в бою!")
     }
 
-    fun attack(target: Character){
+    open fun attack(target: Character){
         if (!isAlive || !target.isAlive) return
         val damage = Random.nextInt(attack - 3, attack + 4)
         println("$name атакует ${target.name}!")
@@ -248,6 +248,10 @@ class Player(
 ) : Character(name, health, attack){
     val inventory = Inventory()
 
+    val maxHealth = 100
+
+    val isPowered: Boolean = false
+
     val questManager = QuestManager()
 
     fun usePotion() {
@@ -257,6 +261,16 @@ class Player(
             potion.use(this) // this - ссылка на текущий обьект Player
         }else{
             println(" У вас нет зелий здоровья")
+        }
+    }
+
+    override fun attack(target: Character){
+        if (isPowered == true){
+            val damage = attack + 10
+            target.takeDamage(damage)
+        }else {
+            val damage = Random.nextInt(attack - 3, attack + 4)
+            target.takeDamage(damage)
         }
     }
 
@@ -298,7 +312,7 @@ class Shop(val name: String, val description: String){
                     shopping = false
                     println(" бб ")
                 }
-                else -> println("попробуй ещё раз") 
+                else -> println("попробуй ещё раз")
             }
         }
     }
@@ -327,6 +341,75 @@ class Shop(val name: String, val description: String){
             // ДЗ ВЫЧЕСТЬ ЗОЛОТЫЕ
         }
     }
+
+    private fun showBuyMenu(player: Player){
+        val sellableItems = player.inventory.items.filter { item ->
+            // containsKey - содержит ключи по id
+            buyPrices.containsKey(item.id)
+        }
+
+        if (sellableItems.isEmpty()){
+            println(" У вас нет предметов на продажу")
+            return
+        }
+
+        println("\n === Ваши предметы для продажи === ")
+        sellableItems.forEachIndexed { index, item ->
+            val price = buyPrices[item.id] ?: 0
+            println("${index + 1}. ${item.name} - Цена продажи: $price золотых")
+        }
+        println("${sellableItems.size + 1}. Назад")
+
+        println("Выберете предмет для продажи: ")
+        val choice = readln().toIntOrNull() ?: 0
+
+        if (choice in 1.. sellableItems.size){
+            val selectedItem = sellableItems[choice - 1]
+            val price = buyPrices[selectedItem.id] ?: 0
+            println(" ВЫ продаете: ${selectedItem.name} за $price золотых")
+            player.inventory.removeItem(choice - 1)
+            // Реализация добавления золота игроку на price
+        }
+    }
+
+    fun getBuyPrice(itemId: String): Int{
+        return buyPrices[itemId] ?: 0
+    }
+}
+
+class  Location(val name: String, val description: String){
+    val items = mutableListOf<Item>()
+    val enemies = mutableListOf<Character>()
+    // может быть null если на локации нет магазинов
+    var shop: Shop? = null
+
+    fun setShop(shop: Shop){
+        this.shop = shop
+    }
+
+    fun describe(){
+        println("\n === $name === ")
+        println(description)
+
+        if (enemies.isNotEmpty()){
+            println("\n Враги на локации: ")
+            enemies.forEachIndexed { index, enemy ->
+                println("${index + 1}. ${enemy.name} (Hp: ${enemy.health})")
+            }
+        }
+
+        if (items.isNotEmpty()){
+            println("\n Предметы в локации: ")
+            items.forEachIndexed { index, item ->
+                println("${index + 1}. ${item.name} - ${item.description}")
+            }
+        }
+
+        if (shop != null){
+            // !! - это строгое удтверждение что shop не null
+            println("\n Магазин: ${shop!!.name}")
+        }
+    }
 }
 
 fun main(){
@@ -334,6 +417,25 @@ fun main(){
     println("Система квестов и npc")
 
     val player = Player("gigaNiga", 100, 15)
+
+    val healthPotion = Item(
+        "health_potion",
+        "Зелье здоровья",
+        "Восстанавливает 30Hp",
+        30,
+        useEffect = { player ->
+            player.health = minOf((player.health + 30), player.maxHealth)
+            println("${player.name} востанавливает себе 30 Hp")
+        }
+    )
+
+    val strengthPotion = Item(
+        "strength_potion",
+        "Зелье силы",
+        "Усиливает вас на 1 ход(на 10 больше урона)",
+        50,
+        useEffect =
+    )
 
     // предметы для квестов создание
     val misteryHerb = Item(
