@@ -158,6 +158,12 @@ class InventorySystem(logger: GameLogger): GameSystem("InventoruSystem", logger)
     }
 
     override fun emergencyShutdown() {
+        private val backUp = mutableListOf<String>()
+        return executeSafely("emergencyShutdown"){
+            logger.warn("СИСТЕМА ОТКЛЮЧАЕТСЯ!!!!!!!!!! ТЫ ДОЛЖЕН СЖЕЧЬ СВОЙ КОМПЬЮТЕР СЕЙЧАС ЖЕ!!!!!!!!!!!!!!!!")
+            isInitialized = false
+
+        }
         // Логирование warn экстренного отключения системы перед отключением
         // Сохранения состояния инвенторя перед отключением
         // Создание бэкап-списка использовать метод joinToString("\n")
